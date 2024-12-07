@@ -1,31 +1,58 @@
 using System.Diagnostics;
+using System.Reflection.Metadata;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using ToDoList.DAL;
 using ToDoList.Models;
+using File = ToDoList.Models.File;
 
 namespace ToDoList.Controllers;
 
 public class HomeController : Controller
 {
-    private readonly ILogger<HomeController> _logger;
+    private readonly AppDbContext _context;
 
-    public HomeController(ILogger<HomeController> logger)
+    public HomeController(AppDbContext context)
     {
-        _logger = logger;
+        _context = context;
     }
-
     public IActionResult Index()
     {
         return View();
     }
-
-    public IActionResult Privacy()
+    public async Task<IActionResult> GetAll()
     {
-        return View();
+        List<Models.File> list = await _context.Files.ToListAsync();
+        return View(list);
     }
 
-    [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
-    public IActionResult Error()
+    [HttpPost]
+    public async Task<IActionResult> Create(IFormFile file, string name, string description)
     {
-        return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
+        if (file == null || file.Length == 0)
+            return BadRequest("File is empty");
+
+        using var memoryStream = new MemoryStream();
+        await file.CopyToAsync(memoryStream);
+
+        File insertData = new File
+        {
+            Name = name,
+            Description = description,
+            Type = file.ContentType,
+            Document = memoryStream.ToArray()
+        };
+
+        await _context.AddAsync(insertData);
+        await _context.SaveChangesAsync();
+
+        return Ok("File uploaded successfully");
     }
+
+    //public async Task<IActionResult>(Files data)
+    //{
+
+    //}
+
+
 }
