@@ -1,10 +1,10 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Reflection.Metadata;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ToDoList.DAL;
 using ToDoList.Models;
-using File = ToDoList.Models.File;
+using FileUploadModel = ToDoList.Models.FileUploadModel;
 
 namespace ToDoList.Controllers;
 
@@ -20,39 +20,37 @@ public class HomeController : Controller
     {
         return View();
     }
+    [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        List<Models.File> list = await _context.Files.ToListAsync();
-        return View(list);
-    }
+        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt == null).ToListAsync();
 
+        return Ok(list);
+    }
     [HttpPost]
-    public async Task<IActionResult> Create(IFormFile file, string name, string description)
+    //[ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create([FromForm] FileUploadModel model)
     {
-        if (file == null || file.Length == 0)
-            return BadRequest("File is empty");
+        //if (model.Doc == null || model.Doc.Length == 0)
+        //    return BadRequest("The uploaded file is empty or not provided.");
 
         using var memoryStream = new MemoryStream();
-        await file.CopyToAsync(memoryStream);
+        await model.File.CopyToAsync(memoryStream);
 
-        File insertData = new File
+        var newFile = new FileUploadModel
         {
-            Name = name,
-            Description = description,
-            Type = file.ContentType,
-            Document = memoryStream.ToArray()
+            Name = model.Name, 
+            Description = model.Description, 
+            Type = model.File.ContentType,
+            Document = memoryStream.ToArray() 
         };
 
-        await _context.AddAsync(insertData);
+        await _context.Files.AddAsync(newFile);
         await _context.SaveChangesAsync();
 
         return Ok("File uploaded successfully");
     }
 
-    //public async Task<IActionResult>(Files data)
-    //{
-
-    //}
 
 
 }

@@ -11,6 +11,6 @@ namespace ToDoList.DAL
         {
         }
 
-        public DbSet<Models.File> Files { get; set; }
+        public DbSet<FileUploadModel> Files { get; set; }
     }
 }

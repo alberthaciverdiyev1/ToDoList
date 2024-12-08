@@ -1,14 +1,18 @@
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ToDoList.Models;
 
-public class File
+public class FileUploadModel
 {
     [Required]
+    public int Id { get; set; } 
+
     public string? Name { get; set; }
     [Required]
     public string? Description { get; set; }
-    [Required]
+    [NotMapped]
+    public IFormFile? File { get; set; }
     public byte[]? Document { get; set; }
     public string? Type { get; set; }
 
