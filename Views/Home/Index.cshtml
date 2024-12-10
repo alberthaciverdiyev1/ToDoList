@@ -10,33 +10,40 @@
             </div>
         </div>
         <nav>
-            <ul class="space-y-4 font-semibold">
+            <ul class="space-y-4 font-semibold" id="sidebarColumns">
+                <!-- All -->
+                <li id="allFiles" class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer bg-blue-100 text-blue-500">
+                    <i class="fas fa-solid fa-list text-blue-500 text-lg mr-3"></i> <span>All Files</span>
+                </li>
                 <!-- PDFs -->
-                <li class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
+                <li id="onlyPdf" class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
                     <i class="fas fa-file-pdf text-red-500 text-lg mr-3"></i> <span>PDFs</span>
                 </li>
                 <!-- Images -->
-                <li class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
+                <li id="onlyImages" class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
                     <i class="fas fa-image text-yellow-500 text-lg mr-3"></i> <span>Images</span>
                 </li>
                 <!-- Docs -->
-                <li class="flex items-center bg-blue-50 text-blue-500 py-2 px-3 rounded-lg">
+                <li id="onlyDocs" class="flex items-center text-gray-700  py-2 px-3 rounded-lg hover:bg-gray-100 cursor-pointer">
                     <i class="fas fa-file-alt text-blue-500 text-lg mr-3"></i> <span>Docs</span>
                 </li>
                 <!-- Musics -->
-                <li class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
+                <li id="onlyMusics" class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
                     <i class="fas fa-music text-green-500 text-lg mr-3"></i> <span>Musics</span>
                 </li>
                 <!-- Others -->
-                <li class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
+                <li id="onlyOthers" class="flex items-center text-gray-700 hover:bg-gray-100 py-2 px-3 rounded-lg cursor-pointer">
                     <i class="fas fa-ellipsis-h text-purple-500 text-lg mr-3"></i> <span>Others</span>
                 </li>
             </ul>
         </nav>
         <!-- Trashbox -->
         <div class="absolute bottom-4 left-0 w-full px-4">
-            <button class="flex items-center bg-red-600 text-white hover:bg-red-700 py-2 px-3 rounded-lg w-full">
+            <button id="trashBox" class="flex items-center bg-red-600 text-white hover:bg-red-700 py-2 px-3 rounded-lg w-full">
                 <i class="fas fa-trash-alt text-white text-lg mr-3"></i> <span>Trashbox</span>
+            </button>
+            <button id="getAllButton" class="flex items-center bg-blue-600 text-white hover:bg-blue-700 py-2 px-3 rounded-lg w-full hidden">
+                <i class="fa-solid fa-list text-white text-lg mr-3"></i> <span>List</span>
             </button>
         </div>
     </div>
@@ -57,9 +64,9 @@
                     <thead class="bg-blue-600 text-white">
                         <tr>
                             <th class="px-4 py-3 text-left text-sm font-semibold">#</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold">Task Name</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold">Category</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold">Due Date</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Name</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Description</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">Date</th>
                             <th class="px-4 py-3 text-center text-sm font-semibold">Actions</th>
                         </tr>
                     </thead>
@@ -124,24 +131,33 @@
             <input type="text" id="editName"
                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:border-teal-500 focus:ring focus:ring-teal-200 transition duration-200"
                    placeholder="Enter file name" />
+            <p class="text-red-500 hidden">Please enter a name for the file.</p>
+
         </div>
         <div class="mb-3">
             <label for="editDescription" class="block text-gray-700 font-medium mb-2">Description</label>
             <textarea id="editDescription"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:border-teal-500 focus:ring focus:ring-teal-200 transition duration-200"
                       placeholder="Enter description"></textarea>
+            <p class="text-red-500 hidden">Please enter a description for the file.</p>
+
         </div>
         <div class="mb-3">
             <label for="editFile" class="block text-gray-700 font-medium mb-2">File</label>
             <input type="file" id="editFile"
                    class="w-full border border-gray-300 rounded-md shadow-sm focus:outline-none focus:border-teal-500 focus:ring focus:ring-teal-200 transition duration-200" />
+
+            <p class="text-red-500 hidden">Please select a file to upload.</p>
+        </div>
+        <div id="editFilePreview" class="mb-3 hidden w-32 h-36 overflow-hidden">
+            <!-- Preview content will be shown here -->
         </div>
         <div class="flex justify-end gap-3 mt-4">
             <button type="button" id="cancelEditButton"
                     class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-md shadow-md">
                 Cancel
             </button>
-            <button type="button" id="saveEditButton"
+            <button type="button" id="saveEditButton" data-id=""
                     class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-md shadow-md transform hover:scale-105 transition duration-200">
                 Update
             </button>

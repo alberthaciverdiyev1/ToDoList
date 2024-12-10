@@ -23,7 +23,14 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt == null).ToListAsync();
+        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt == null).OrderByDescending(x=>x.LastModified).ToListAsync();
+
+        return Ok(list);
+    }
+    [HttpGet]
+    public async Task<IActionResult> GetTrashedList()
+    {
+        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt != null).OrderByDescending(x => x.LastModified).ToListAsync();
 
         return Ok(list);
     }
@@ -49,6 +56,51 @@ public class HomeController : Controller
         await _context.SaveChangesAsync();
 
         return Ok("File uploaded successfully");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var file = await _context.Files.FindAsync(id);
+        if (file == null)
+        {
+            return NotFound("File not found.");
+        }
+
+        file.DeletedAt = DateTime.UtcNow; 
+        _context.Files.Update(file);
+        await _context.SaveChangesAsync();
+
+        return Ok("File marked as deleted successfully.");
+    }
+
+
+    [HttpPost]
+    public async Task<IActionResult> Update([FromForm] FileUploadModel model)
+    {
+        var file = await _context.Files.FindAsync(model.Id);
+        if (file == null)
+        {
+            return NotFound("File not found.");
+        }
+
+        file.Name = model.Name;
+        file.Description = model.Description;
+
+        if (model.File != null)
+        {
+            using var memoryStream = new MemoryStream();
+            await model.File.CopyToAsync(memoryStream);
+            file.Document = memoryStream.ToArray();
+            file.Type = model.File.ContentType;
+
+        }
+            file.LastModified = DateTime.UtcNow;
+
+        _context.Files.Update(file);
+        await _context.SaveChangesAsync();
+
+        return Ok("File updated successfully.");
     }
 
 

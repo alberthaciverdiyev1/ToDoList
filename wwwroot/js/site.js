@@ -1,6 +1,43 @@
 ﻿$(document).ready(function () {
     let filesArray = [];
 
+    function formatDate(date) {
+        const now = new Date();
+        const inputDate = new Date(date);
+        const difference = now - inputDate; // difference in milliseconds
+
+        if (difference < 0) {
+            return "Future date";
+        }
+
+        const seconds = Math.floor(difference / 1000);
+        const minutes = Math.floor(seconds / 60);
+        const hours = Math.floor(minutes / 60);
+        const days = Math.floor(hours / 24);
+        const months = Math.floor(days / 30);
+
+        if (seconds >= 60) {
+            if (minutes < 60) {
+                return `${minutes} minutes ago`;
+            } else if (hours < 24) {
+                return `${hours} hours ago`;
+            } else if (days < 30) {
+                return `${days} days ago`;
+            } else {
+                // More than a month ago, show the full date
+                return inputDate.toLocaleDateString("en-US", {
+                    day: "2-digit",
+                    month: "long",
+                    year: "numeric"
+                });
+            }
+        } else {
+            // No display for 1 second; only displays for more than 1 second
+            return `${seconds} seconds ago`;
+        }
+    }
+
+
     const getAll = () => {
         let h = "";
         $.get({
@@ -15,23 +52,23 @@
                     const fileUrl = `data:${mimeType};base64,${base64Data}`;
 
                     h += `
-                        <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200">
+                        <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200"  data-id="${fileData.id}">
                             <td class="px-4 py-3 text-gray-700">${i + 1} </td>
                             <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
                             <td class="px-4 py-3 text-gray-700">${fileData.description}</td >
-                            <td class="px-4 py-3 text-gray-700">${fileData.updatedAt ?? fileData.createdAt} </td>
+                            <td class="px-4 py-3 text-gray-700">  ${formatDate(fileData.lastModified ?? fileData.createdAt)} </td>
                             <td class="px-4 py-3 text-center">
                                 <div class="flex justify-center space-x-2">
                                     <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
                                         <i class="fas fa-eye"></i>
                                     </button> 
-                                    <button id="editButton" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
+                                    <button id="editButton" data-id="${fileData.id}" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
                                         <i class="fas fa-edit"></i>
                                     </button>
                                     <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
                                         <i class="fa-solid fa-file-pdf"></i>
                                     </button>
-                                    <button class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                                    <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -144,6 +181,8 @@
     function closeModal(id = null) {
         $('#addFileModal').addClass('hidden');
         $('#editFileModal').addClass('hidden');
+        $('#filePreview').addClass('hidden');
+        $('#editFilePreview').addClass('hidden');
     }
 
     $('#saveButton').on('click', function () {
@@ -192,7 +231,7 @@
                 });
                 getAll();
                 closeModal();
-                 $('#name').val("");
+                $('#name').val("");
                 $('#description').val("");
                 $('#file').val("");
             },
@@ -202,7 +241,8 @@
             }
         });
     });
-    // Listen for changes to the file input and preview the file
+
+
     $('#file').on('change', function () {
         const file = this.files[0];
 
@@ -230,11 +270,41 @@
 
                 // Update the preview section and show it
                 $('#filePreview').html(previewContent).removeClass('hidden');
+                $('#editFilePreview').html("").removeClass('hidden');
+                $('#editFilePreview').html(previewContent).removeClass('hidden');
+
             };
 
             // Read the file as a data URL
             reader.readAsDataURL(file);
         }
+    });
+
+    $(document).on("click", `[data-role="delete"]`, function () {
+        let id = $(this).data("id");
+        Swal.fire({
+            title: "Do you want to delete?",
+            showCancelButton: true,
+            confirmButtonText: "Delete",
+            confirmButtonColor: "#dc3545",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/Home/Delete/${id}`,
+                    type: 'POST',
+                    success: function (response) {
+                        Swal.fire({
+                            icon: "success",
+                            text: response,
+                        });
+                        getAll();
+                    },
+                    error: function (error) {
+                        console.error('Error deleting file:', error);
+                    }
+                });
+            }
+        });
     });
 
     $updateButton.on('click', function () {
@@ -258,7 +328,445 @@
         $(`#addFileModal`).removeClass("hidden")
     });
 
-    $('#editButton').on('click', function () {
-        $(`#editFileModal`).removeClass("hidden")
+    $(document).on('click', '#editButton', function () {
+        const $editModal = $('#editFileModal');
+        $editModal.removeClass('hidden');
+
+
+        let id = $(this).data('id');
+        $('#saveEditButton').attr('data-id', id);
+
+
+        let file = filesArray.find(x => x.id === id);
+
+        if (file) {
+            // Dosya tipini ve belgesini doğrula
+            const fileType = file.type;
+            const byteCharacters = atob(file.document); // Base64'ten çöz
+            const byteArray = new Uint8Array(byteCharacters.length);
+
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteArray[i] = byteCharacters.charCodeAt(i);
+            }
+
+            const blob = new Blob([byteArray], { type: fileType });
+            const fileUrl = URL.createObjectURL(blob);
+
+            let previewContent = '';
+
+            if (fileType.startsWith('image/')) {
+                previewContent = `<img src="${fileUrl}" alt="File Preview" style="max-width: 100%; height: auto;">`;
+            } else if (fileType.startsWith('audio/')) {
+                previewContent = `<audio controls><source src="${fileUrl}" type="${fileType}">Your browser does not support the audio element.</audio>`;
+            } else if (fileType === 'application/pdf') {
+                previewContent = `<iframe src="${fileUrl}" width="100%" height="500px"></iframe>`;
+            } else {
+                previewContent = `<p>This file type is not supported for preview.</p>`;
+            }
+
+            $('#editFilePreview').html(previewContent).removeClass('hidden');
+        } else {
+            Swal.fire({
+                icon: 'error',
+                title: 'File Not Found',
+                text: 'The selected file could not be found.',
+            });
+            return;
+        }
+
+        // Form alanlarını dosya bilgileriyle doldur
+        $('#editName').val(file.name);
+        $('#editDescription').val(file.description);
     });
+
+
+    const GetTrashList = () => {
+        let h = "";
+        $.get({
+            url: '/Home/GetTrashedList',
+            method: 'GET',
+            success: function (data) {
+                filesArray = data;
+                data.forEach((fileData, i) => {
+                    console.log(fileData)
+                    const mimeType = fileData.type;
+                    const base64Data = fileData.document;
+                    const fileUrl = `data:${mimeType};base64,${base64Data}`;
+
+                    h += `
+                        <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200"  data-id="${fileData.id}">
+                            <td class="px-4 py-3 text-gray-700">${i + 1} </td>
+                            <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
+                            <td class="px-4 py-3 text-gray-700">${fileData.description}</td >
+                            <td class="px-4 py-3 text-gray-700">  ${formatDate(fileData.lastModified ?? fileData.createdAt)} </td>
+                            <td class="px-4 py-3 text-center">
+                                <div class="flex justify-center space-x-2">
+                                    <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                                        <i class="fas fa-eye"></i>
+                                    </button> 
+                                    <button id="editButton" data-id="${fileData.id}" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
+                                        <i class="fa-solid fa-file-pdf"></i>
+                                    </button>
+                                    <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+
+                    `
+                });
+                $('#tableBody').html(h);
+            },
+            error: function (e) {
+                console.error("Dosyalar alınırken bir hata oluştu:", e);
+            }
+        });
+    };
+
+
+    $(document).on('click', `#saveEditButton`, () => {
+        //let id = $(this).data('id');
+        let id = $('#saveEditButton').data("id");
+        console.log({ id });
+
+        const name = $('#editName').val();
+        const description = $('#editDescription').val();
+        const fileInput = $('#editFile')[0].files[0]; // Eğer kullanıcı dosya yüklediyse
+
+        $('#editName').siblings('p').addClass('hidden');
+        $('#editDescription').siblings('p').addClass('hidden');
+        $('#editFile').siblings('p').addClass('hidden');
+
+        if (!name) {
+            $('#editName').siblings('p').removeClass('hidden');
+        }
+        if (!description) {
+            $('#editDescription').siblings('p').removeClass('hidden');
+        }
+
+        if (!name || !description) return;
+        console.log(id)
+        const formData = new FormData();
+        formData.append('Id', id); // id'yi formData'ya ekle
+        formData.append('Name', name);
+        formData.append('Description', description);
+        if (fileInput) {
+            formData.append('File', fileInput);
+        }
+
+        $.ajax({
+            url: '/Home/Update',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function (response) {
+                Swal.fire({
+                    icon: "success",
+                    text: response,
+                });
+                getAll(); // Listeyi yenile
+                closeModal(); // Modal'ı kapat
+                $('#editName').val(""); // Giriş alanlarını temizle
+                $('#editDescription').val("");
+                $('#editFile').val("");
+            },
+            error: function (error) {
+                console.error('Error updating file:', error);
+                alert('File update failed.');
+            }
+        });
+    });
+
+    $(document).on('click', `#trashBox`, () => {
+        GetTrashList();
+        $(`#getAllButton`).removeClass("hidden")
+        $(`#trashBox`).addClass("hidden");
+        
+    })
+    $(document).on('click', `#getAllButton`, () => {
+        getAll()
+        $(`#getAllButton`).addClass("hidden")
+        $(`#trashBox`).removeClass("hidden")
+
+    })
+
+    /*==================================*/
+
+    $(document).on("click", `#allFiles`, () => {
+        $('#onlyDocs').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyPdf').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlOthers').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyImages').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyMusics').removeClass(' bg-blue-100 text-blue-500');
+
+        $('#allFiles').addClass(' bg-blue-100 text-blue-500')
+        getAll()
+    });
+
+
+    $(document).on("click", `#onlyPdf`, () => {
+        $('#onlyDocs').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyOthers').removeClass(' bg-blue-100 text-blue-500');
+        $('#allFiles').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyImages').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyMusics').removeClass(' bg-blue-100 text-blue-500');
+
+        $('#onlyPdf').addClass(' bg-blue-100 text-blue-500')
+        let pdfFiles = filesArray.filter(x => x.type === 'application/pdf');
+        let h = '';
+
+        pdfFiles.forEach((fileData, i) => {
+            const mimeType = fileData.type;
+            const base64Data = fileData.document;
+            const fileUrl = `data:${mimeType};base64,${base64Data}`;
+
+            h += `
+            <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200" data-id="${fileData.id}">
+                <td class="px-4 py-3 text-gray-700">${i + 1}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.description}</td>
+                <td class="px-4 py-3 text-gray-700">${formatDate(fileData.lastModified ?? fileData.createdAt)}</td>
+                <td class="px-4 py-3 text-center">
+                    <div class="flex justify-center space-x-2">
+                        <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button id="editButton" data-id="${fileData.id}" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </button>
+                        <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        });
+
+        // Update the table body with the generated rows
+        $('#tableBody').html(h);
+    });
+
+
+
+    $(document).on("click", `#onlyImages`, () => {
+
+        $('#onlyDocs').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyPdf').removeClass(' bg-blue-100 text-blue-500');
+        $('#allFiles').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyMusics').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyOthers').removeClass(' bg-blue-100 text-blue-500');
+
+        $('#onlyImages').addClass(' bg-blue-100 text-blue-500')
+        let imageFiles = filesArray.filter(file => file.type.startsWith('image/'));
+        let h = '';
+
+        imageFiles.forEach((fileData, i) => {
+            const mimeType = fileData.type;
+            const base64Data = fileData.document;
+            const fileUrl = `data:${mimeType};base64,${base64Data}`;
+
+            h += `
+            <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200" data-id="${fileData.id}">
+                <td class="px-4 py-3 text-gray-700">${i + 1}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.description}</td>
+                <td class="px-4 py-3 text-gray-700">${formatDate(fileData.lastModified ?? fileData.createdAt)}</td>
+                <td class="px-4 py-3 text-center">
+                    <div class="flex justify-center space-x-2">
+                        <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button id="editButton" data-id="${fileData.id}" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </button>
+                        <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        });
+
+        // Update the table body with the generated rows
+        $('#tableBody').html(h);
+    });
+
+
+    $(document).on("click", `#onlyMusics`, () => {
+        $('#onlyDocs').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyPdf').removeClass(' bg-blue-100 text-blue-500');
+        $('#allFiles').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyImages').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyOthers').removeClass(' bg-blue-100 text-blue-500');
+
+        $('#onlyMusics').addClass(' bg-blue-100 text-blue-500')
+
+        let imageFiles = filesArray.filter(file => file.type.startsWith('audio/'));
+        let h = '';
+
+        imageFiles.forEach((fileData, i) => {
+            const mimeType = fileData.type;
+            const base64Data = fileData.document;
+            const fileUrl = `data:${mimeType};base64,${base64Data}`;
+
+            h += `
+            <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200" data-id="${fileData.id}">
+                <td class="px-4 py-3 text-gray-700">${i + 1}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.description}</td>
+                <td class="px-4 py-3 text-gray-700">${formatDate(fileData.lastModified ?? fileData.createdAt)}</td>
+                <td class="px-4 py-3 text-center">
+                    <div class="flex justify-center space-x-2">
+                        <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button id="editButton" data-id="${fileData.id}" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </button>
+                        <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        });
+
+        // Update the table body with the generated rows
+        $('#tableBody').html(h);
+    });
+
+
+    $(document).on("click", `#onlyDocs`, () => {
+        $('#onlyMusics').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyPdf').removeClass(' bg-blue-100 text-blue-500');
+        $('#allFiles').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyImages').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyOthers').removeClass(' bg-blue-100 text-blue-500');
+
+        $('#onlyDocs').addClass(' bg-blue-100 text-blue-500')
+        const documentTypes = [
+            'application/msword', // .doc
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+            'application/vnd.ms-excel', // .xls
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'application/vnd.ms-powerpoint', // .ppt
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation' // .pptx
+        ];
+
+        let docFiles = filesArray.filter(file => documentTypes.includes(file.type));
+        let h = '';
+
+        docFiles.forEach((fileData, i) => {
+            const mimeType = fileData.type;
+            const base64Data = fileData.document;
+            const fileUrl = `data:${mimeType};base64,${base64Data}`;
+
+            h += `
+            <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200" data-id="${fileData.id}">
+                <td class="px-4 py-3 text-gray-700">${i + 1}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.description}</td>
+                <td class="px-4 py-3 text-gray-700">${formatDate(fileData.lastModified ?? fileData.createdAt)}</td>
+                <td class="px-4 py-3 text-center">
+                    <div class="flex justify-center space-x-2">
+                        <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button id="editButton" data-id="${fileData.id}" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </button>
+                        <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        });
+
+        // Update the table body with the generated rows
+        $('#tableBody').html(h);
+    });
+
+    $(document).on("click", `#onlyOthers`, () => {
+        $('#onlyDocs').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyPdf').removeClass(' bg-blue-100 text-blue-500');
+        $('#allFiles').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyImages').removeClass(' bg-blue-100 text-blue-500');
+        $('#onlyMusics').removeClass(' bg-blue-100 text-blue-500');
+
+        $('#onlyOthers').addClass(' bg-blue-100 text-blue-500')
+
+        const knownTypes = [
+            'application/pdf', // PDF
+            'image/', // Image
+            'application/msword', // .doc
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document', // .docx
+            'application/vnd.ms-excel', // .xls
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+            'application/vnd.ms-powerpoint', // .ppt
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation', // .pptx
+            'audio/', // Audio
+        ];
+
+        let otherFiles = filesArray.filter(file =>
+            !knownTypes.some(type => file.type.startsWith(type))
+        );
+        let h = '';
+
+        otherFiles.forEach((fileData, i) => {
+            const mimeType = fileData.type;
+            const base64Data = fileData.document;
+            const fileUrl = `data:${mimeType};base64,${base64Data}`;
+
+            h += `
+            <tr class="hover:bg-blue-50 transition duration-200 border-b border-gray-200" data-id="${fileData.id}">
+                <td class="px-4 py-3 text-gray-700">${i + 1}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
+                <td class="px-4 py-3 text-gray-700">${fileData.description}</td>
+                <td class="px-4 py-3 text-gray-700">${formatDate(fileData.lastModified ?? fileData.createdAt)}</td>
+                <td class="px-4 py-3 text-center">
+                    <div class="flex justify-center space-x-2">
+                        <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button id="editButton" data-id="${fileData.id}" class="bg-yellow-500 text-white py-1 px-3 rounded-lg hover:bg-yellow-600 transition duration-200">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
+                            <i class="fa-solid fa-file-pdf"></i>
+                        </button>
+                        <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        });
+
+        // Update the table body with the generated rows
+        $('#tableBody').html(h);
+    });
+
+
 });
