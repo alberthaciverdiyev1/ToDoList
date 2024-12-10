@@ -23,14 +23,14 @@ public class HomeController : Controller
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt == null).OrderByDescending(x=>x.LastModified).ToListAsync();
+        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt == null).OrderByDescending(x=>x.Id).ToListAsync();
 
         return Ok(list);
     }
     [HttpGet]
     public async Task<IActionResult> GetTrashedList()
     {
-        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt != null).OrderByDescending(x => x.LastModified).ToListAsync();
+        List<FileUploadModel> list = await _context.Files.Where(x => x.DeletedAt != null).OrderByDescending(x => x.Id).ToListAsync();
 
         return Ok(list);
     }
@@ -72,6 +72,21 @@ public class HomeController : Controller
         await _context.SaveChangesAsync();
 
         return Ok("File marked as deleted successfully.");
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> HardDelete(int id)
+    {
+        var file = await _context.Files.FindAsync(id);
+        if (file == null)
+        {
+            return NotFound("File not found.");
+        }
+
+        _context.Files.Remove(file);
+        await _context.SaveChangesAsync();
+
+        return Ok("File deleted successfully.");
     }
 
 

@@ -53,9 +53,14 @@
             <!-- Table Header -->
             <div class="flex justify-between items-center mb-6">
                 <h2 class="text-2xl font-bold text-gray-800">Task List</h2>
-                <button id="newButton" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
-                    <i class="fas fa-plus mr-2"></i>Add Task
-                </button>
+                <div class="flex">
+                    <div class="">
+                        <input type="text" id="searchInput" class="w-72 border border-gray-300 rounded-lg p-2 focus:outline-none focus:border-blue-500 mr-6" placeholder="Search tasks...">
+                    </div>
+                    <button id="newButton" class="bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition duration-200">
+                        <i class="fas fa-plus mr-2"></i>Add Task
+                    </button>
+                </div>
             </div> <!-- Table -->
 
 
@@ -64,14 +69,32 @@
                     <thead class="bg-blue-600 text-white">
                         <tr>
                             <th class="px-4 py-3 text-left text-sm font-semibold">#</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold">Name</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold">Description</th>
-                            <th class="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">
+                                Name
+                                <span id="name-sort" class="cursor-pointer">
+                                    <i class="fas fa-sort"></i>
+                                </span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">
+                                Description
+                                <span id="description-sort" class="cursor-pointer">
+                                    <i class="fas fa-sort"></i>
+                                </span>
+                            </th>
+                            <th class="px-4 py-3 text-left text-sm font-semibold">
+                                Date
+                                <span id="date-sort" class="cursor-pointer">
+                                    <i class="fas fa-sort"></i>
+                                </span>
+                            </th>
                             <th class="px-4 py-3 text-center text-sm font-semibold">Actions</th>
                         </tr>
+
                     </thead>
                     <tbody class="overflow-y-scroll scroll-smooth" id="tableBody">
                         <!-- Row 1 -->
+
+
 
                     </tbody>
                 </table>

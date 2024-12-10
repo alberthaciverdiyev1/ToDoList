@@ -307,6 +307,33 @@
         });
     });
 
+    $(document).on("click", `[data-role="delete-permanatly"]`, function () {
+        let id = $(this).data("id");
+        Swal.fire({
+            title: "Do you want to delete?",
+            showCancelButton: true,
+            confirmButtonText: "Delete",
+            confirmButtonColor: "#dc3545",
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: `/Home/HardDelete/${id}`,
+                    type: 'POST',
+                    success: function (response) {
+                        Swal.fire({
+                            icon: "success",
+                            text: response,
+                        });
+                        GetTrashList();
+                    },
+                    error: function (error) {
+                        console.error('Error deleting file:', error);
+                    }
+                });
+            }
+        });
+    });
+
     $updateButton.on('click', function () {
         const formData = {
             name: $nameInput.val(),
@@ -410,7 +437,7 @@
                                     <button id="view-as-pdf" data-id="${fileData.id}" class="bg-orange-500 text-white py-1 px-3 rounded-lg hover:bg-orange-600 transition duration-200">
                                         <i class="fa-solid fa-file-pdf"></i>
                                     </button>
-                                    <button data-role="delete" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
+                                    <button data-role="delete-permanatly" data-id="${fileData.id}" class="bg-red-500 text-white py-1 px-3 rounded-lg hover:bg-red-600 transition duration-200">
                                         <i class="fas fa-trash"></i>
                                     </button>
                                 </div>
@@ -682,7 +709,7 @@
                 <td class="px-4 py-3 text-gray-700">${i + 1}</td>
                 <td class="px-4 py-3 text-gray-700">${fileData.name}</td>
                 <td class="px-4 py-3 text-gray-700">${fileData.description}</td>
-                <td class="px-4 py-3 text-gray-700">${formatDate(fileData.lastModified ?? fileData.createdAt)}</td>
+                <td class="px-4 py-3 text-gray-700">${formatDate(fileData.createdAt)}</td>
                 <td class="px-4 py-3 text-center">
                     <div class="flex justify-center space-x-2">
                         <button id="viewFileButton" data-id="${fileData.id}" class="bg-blue-500 text-white py-1 px-3 rounded-lg hover:bg-blue-600 transition duration-200">
@@ -768,5 +795,75 @@
         $('#tableBody').html(h);
     });
 
+    $(document).on('input', '#searchInput', function () {
+        const searchTerm = $(this).val().toLowerCase();
+        $('#tableBody tr').each(function () {
+            const rowText = $(this).text().toLowerCase();
+            if (rowText.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+
+
+        const nameSortIcon = document.getElementById('name-sort');
+        const descriptionSortIcon = document.getElementById('description-sort');
+        const dateSortIcon = document.getElementById('date-sort');
+
+        let nameOrder = 'asc';
+        let descriptionOrder = 'asc';
+        let dateOrder = 'asc';
+
+        nameSortIcon.addEventListener('click', () => {
+            sortTable('name', nameOrder);
+            nameOrder = nameOrder === 'asc' ? 'desc' : 'asc';
+        });
+
+        descriptionSortIcon.addEventListener('click', () => {
+            sortTable('description', descriptionOrder);
+            descriptionOrder = descriptionOrder === 'asc' ? 'desc' : 'asc';
+        });
+
+        dateSortIcon.addEventListener('click', () => {
+            sortTable('date', dateOrder);
+            dateOrder = dateOrder === 'asc' ? 'desc' : 'asc';
+        });
+
+        function sortTable(column, order) {
+            const tableBody = document.querySelector('#tableBody');
+            const rows = Array.from(tableBody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                let aValue, bValue;
+
+                switch (column) {
+                    case 'name':
+                        aValue = a.querySelector('td:nth-child(2)').innerText.toLowerCase();
+                        bValue = b.querySelector('td:nth-child(2)').innerText.toLowerCase();
+                        break;
+                    case 'description':
+                        aValue = a.querySelector('td:nth-child(3)').innerText.toLowerCase();
+                        bValue = b.querySelector('td:nth-child(3)').innerText.toLowerCase();
+                        break;
+                    case 'date':
+                        aValue = new Date(a.querySelector('td:nth-child(4)').innerText);
+                        bValue = new Date(b.querySelector('td:nth-child(4)').innerText);
+                        break;
+                }
+
+                if (order === 'asc') {
+                    return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+                } else {
+                    return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+                }
+            });
+
+            rows.forEach((row, index) => {
+                row.querySelector('td:nth-child(1)').innerText = index + 1; // Update row number
+                tableBody.appendChild(row);
+            });
+        }
 
 });
